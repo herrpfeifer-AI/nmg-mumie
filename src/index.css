@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-cinzel: 'Cinzel', serif;
+    --font-nunito: 'Nunito', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-nunito);
+    background-color: #0b0f19;
+    color: #f1ebd9;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-pharaoh {
+    font-family: var(--font-cinzel);
+    letter-spacing: 0.04em;
+  }
+}
+
+/* Custom golden Egyptian ambient scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b48325;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4a038;
+}
+
+/* Glowing torch pulse animation */
+@keyframes torchPulse {
+  0%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 18px rgba(234, 179, 8, 0.45));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 28px rgba(245, 158, 11, 0.7));
+  }
+}
+
+.torch-glow {
+  animation: torchPulse 4s ease-in-out infinite;
+}
+
+/* Papyrus textured look */
+.bg-papyrus {
+  background-color: #f6eedb;
+  color: #2b1f13;
+}
+
+/* Hieroglyph pattern banner */
+.hieroglyph-pattern {
+  background-image: radial-gradient(#d4a038 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+

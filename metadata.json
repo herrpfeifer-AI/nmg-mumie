@@ -1,0 +1,6 @@
+{
+  "name": "Pharao Tutanchamun – Die sprechende Mumie",
+  "description": "Interaktiver Chatbot für Schülerinnen und Schüler der 5. Klasse der Primarschule Erlenmatt mit Pharao Tutanchamun.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
