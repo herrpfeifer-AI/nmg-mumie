@@ -119,10 +119,10 @@ export const WelcomeGuide: React.FC<WelcomeGuideProps> = ({
                 3
               </div>
               <h3 className="font-bold font-pharaoh text-amber-200 text-sm">
-                Code bei Lehrperson holen
+                Lösungswort finden
               </h3>
               <p className="text-xs text-amber-100/80 leading-relaxed">
-                Alles im OneNote eingetragen? Zeigt es eurer Lehrperson und holt euch das geheime Codewort!
+                Alles im OneNote eingetragen? Die markierten Anfangsbuchstaben ergeben das geheime Lösungswort für die Prüfung!
               </p>
             </div>
           </div>
@@ -178,7 +178,7 @@ export const WelcomeGuide: React.FC<WelcomeGuideProps> = ({
               <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 group-hover:bg-amber-500/30">
                 <KeyRound className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-amber-200 text-sm">Prüfung & Urkunde (mit Codewort)</h4>
+              <h4 className="font-bold text-amber-200 text-sm">Prüfung & Urkunde (mit Lösungswort)</h4>
             </div>
             <p className="text-xs text-slate-300">
               Schliesst die Lücken im Text mit den durchmischten Wortbausteinen und erhaltet eure feierliche Pharaonen-Urkunde!

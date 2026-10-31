@@ -241,7 +241,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
         setPasswordError(null);
         playSuccessChime(soundEnabled);
       } else {
-        setPasswordError('Dieses Wort öffnet das Tor nicht. Frage deine Lehrperson!');
+        setPasswordError('Dieses Wort öffnet das Tor nicht. Prüfe die Buchstaben in deinem OneNote nochmals!');
         playTombGong(soundEnabled);
       }
     } catch {
@@ -443,7 +443,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             <p className="text-sm text-amber-100/80 max-w-lg mx-auto leading-relaxed">
               Hast du deinen <strong>Fragebogen im OneNote</strong> fertig ausgefüllt?
               <br />
-              Dann hole dir jetzt bei deiner Lehrperson das geheime Passwort, um das Prüfungstor zu öffnen!
+              Dann setze die Buchstaben aus deinem OneNote zum <strong>Lösungswort</strong> zusammen. Es öffnet das Prüfungstor!
             </p>
           </div>
 
@@ -457,7 +457,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
                   setPasswordInput(e.target.value);
                   setPasswordError(null);
                 }}
-                placeholder="Codewort eingeben..."
+                placeholder="Lösungswort eingeben..."
                 className="w-full bg-[#162138] border-2 border-amber-500/50 focus:border-amber-400 rounded-2xl px-4 py-3.5 text-center text-lg font-bold tracking-widest text-amber-100 placeholder:text-amber-200/30 placeholder:tracking-normal placeholder:font-normal focus:outline-none shadow-inner"
               />
               <KeyRound className="w-5 h-5 text-amber-400/60 absolute right-4 top-1/2 -translate-y-1/2" />

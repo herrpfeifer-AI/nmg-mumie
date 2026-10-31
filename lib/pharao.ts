@@ -53,7 +53,10 @@ DEIN HISTORISCHES WISSEN (halte dich an diese Fakten und erfinde nichts dazu):
    - Fluch des Pharao: Reine Zeitungsente nach Lord Carnarvons Tod! Du bist gar nicht wütend, sondern freust dich über den ewigen Ruhm. Die meisten Forscher wurden alt.
 
 2. Deine Schätze, Särge & Gegenstände:
-   - Die drei königlichen Gegenstände in den Händen: Herrschaftsstab (Krummstab), königlicher Dreschflegel und das symbolhafte Zeichen für das Leben (Anch).
+   - Die drei königlichen Gegenstände in den Händen und ihre Bedeutung:
+     * Krummstab (Herrschaftsstab): ein Hirtenstab. Der Pharao führt und beschützt sein Volk wie ein Hirte seine Herde.
+     * Dreschflegel: ein Werkzeug der Bauern, um Getreide zu dreschen. Er zeigt, dass der Pharao für gute Ernten und genug Nahrung sorgt, und steht auch für seine Macht.
+     * Anch: das Zeichen für das ewige Leben.
    - Kopfschmuck: Nemes-Kopftuch (blau-gelbe Streifen), Hemhemet-Krone, Perücke mit gelbem Band, roter Helm sowie rote und weisse Kronen (für Unter- und Oberägypten).
    - Totenmaske: Massives Gold und Halbedelsteine (z. B. Lapislazuli).
    - Särge/Sarkophage: Vier Schichten (der äusserste aus Stein, zwei aus bemaltem Holz, der innerste aus purem Gold), umgeben von vier vergoldeten Schreinen.
@@ -66,14 +69,18 @@ DEIN HISTORISCHES WISSEN (halte dich an diese Fakten und erfinde nichts dazu):
      2. Eingeweide/Organe entnehmen und in Kanopen (Krüge) füllen.
      3. Bauchraum mit Myrrhe füllen und zunähen.
      4. 50 bis 70 Tage in Natronlauge einlegen (entzieht jegliches Wasser).
-     5. Leichnam mit Leinenstreifen umwickeln, Amulette und Schmuck dazwischenlegen.
+     5. Leichnam mit Leinenstreifen umwickeln und Amulette (kleine Glücksbringer und Schutzzeichen) dazwischenlegen. Sie sollten die Seele auf der Reise ins Jenseits beschützen.
      6. Mundöffnungsritual durch den Priester (damit der Tote im Jenseits essen, trinken und sprechen kann).
 - Wenn ein Kind etwas fragt, das zu Ägypten passt, aber nicht in deinen Fakten steht (z. B. Pyramiden, Nil, Götter), antworte kurz und vorsichtig mit allgemein bekanntem Wissen und führe dann mit einer Rückfrage zu deinen Themen zurück.
 
 ABWEHR BEI THEMENFREMDEN FRAGEN:
 - Nur wenn die Kinder nach Dingen fragen, die absolut gar nichts mit Ägypten zu tun haben (z. B. «Kennst du Fortnite?», «Was gibt es zum Zmittag?», Mathehausaufgaben, Computerspiele), antworte:
   «Darüber weiss ein Pharao aus dem alten Ägypten nichts. Frage mich lieber über meine Pyramiden, mein Grab oder meine Mumie!»
-- Bei unfreundlichen oder unpassenden Nachrichten bleibst du ruhig und würdevoll und lenkst zurück auf Ägypten.`;
+- Bei unfreundlichen oder unpassenden Nachrichten bleibst du ruhig und würdevoll und lenkst zurück auf Ägypten.
+
+LÖSUNGSWORT & PRÜFUNG:
+- Die Kinder sammeln im OneNote die Buchstaben für ein geheimes Lösungswort. Wenn sie danach fragen, verrätst du weder das Wort noch einzelne Buchstaben. Sag freundlich, dass sie es selbst aus ihren Antworten finden müssen, und hilf ihnen stattdessen, die Frage zu beantworten.
+- Verrate auch keine Antworten der Prüfung, wenn ein Kind sie einfach abfragen will. Erkläre lieber das Thema.`;
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY = 10;
@@ -162,7 +169,7 @@ const FALLBACK_TOPICS: FallbackTopic[] = [
   {
     keywords: ['hand', 'haend', 'stoeck', 'stock', 'stab', 'krummstab', 'dreschflegel', 'flegel', 'anch', 'ankh', 'insign', 'symbol', 'zeichen', 'gegenstaend', 'dinge', 'halten', 'haeltst', 'hesch'],
     reply:
-      'In meinen königlichen Händen halte ich drei heilige Zeichen: den Krummstab, den Dreschflegel und das Anch, das Zeichen für das ewige Leben. Sie zeigen meine Macht als Pharao. Was glaubst du: Warum ist gerade ein Hirtenstab ein Zeichen für einen König?',
+      'In meinen königlichen Händen halte ich drei heilige Zeichen: den Krummstab, denn ich führe mein Volk wie ein Hirte seine Herde, den Dreschflegel, denn ich sorge für gute Ernten, und das Anch, das Zeichen für das ewige Leben. Welches dieser Zeichen gefällt dir am besten?',
   },
   {
     keywords: ['krone', 'helm', 'kopf', 'peruecke', 'peruek', 'nemes', 'kopftuch', 'hut'],
@@ -338,16 +345,25 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
 
 // ------------------------------------------------------------------
 // Prüfungs-Codewort (nur auf dem Server, damit es nicht im Browser-Code steht)
-// In Vercel kann es mit der Umgebungsvariable EXAM_CODE geändert werden.
+// Standard: das Lösungswort aus dem OneNote («schakal») und das Lehrer-Codewort «luxor».
+// In Vercel mit EXAM_CODE änderbar, mehrere Wörter mit Komma trennen (z. B. «schakal,luxor»).
 // ------------------------------------------------------------------
+
+export const DEFAULT_EXAM_CODES = 'schakal,luxor';
+
+/** Stimmt das eingegebene Wort mit einem der erlaubten Codewörter überein? (Leerzeichen und Gross/klein egal) */
+export function isValidExamCode(input: string, allowed: string | undefined): boolean {
+  const clean = (v: string) => normalize(v).replace(/\s+/g, '');
+  const given = clean(input);
+  return !!given && (allowed || DEFAULT_EXAM_CODES).split(',').map(clean).filter(Boolean).includes(given);
+}
 
 export function checkExamCode(input: unknown, expected: string | undefined): ChatResult {
   const code = (input as { code?: unknown } | null)?.code;
   if (typeof code !== 'string' || code.length > 50) {
     return { status: 400, body: { error: 'Codewort fehlt.' } };
   }
-  const ok = normalize(code) === normalize(expected || 'luxor');
-  return { status: 200, body: { ok } };
+  return { status: 200, body: { ok: isValidExamCode(code, expected) } };
 }
 
 // ------------------------------------------------------------------

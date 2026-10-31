@@ -3,7 +3,7 @@
 // Gespeichert werden nur: Vorname, Klasse, Prüfungsverlauf, Punkte, Spielstand.
 // Einträge werden 30 Tage nach der letzten Aktivität automatisch gelöscht.
 import { put, list, get, del } from '@vercel/blob';
-import { normalize } from './pharao.js';
+import { isValidExamCode } from './pharao.js';
 
 export const RETENTION_DAYS = 30;
 const PREFIX = 'resultate/';
@@ -96,7 +96,7 @@ export function sanitizeRecord(raw: any): StudentRecord | null {
 export async function saveProgress(input: unknown, examCode: string | undefined): Promise<ApiResult> {
   const body = input as { code?: unknown; record?: unknown } | null;
   if (JSON.stringify(body ?? {}).length > MAX_BODY) return { status: 413, body: { error: 'Zu gross.' } };
-  if (typeof body?.code !== 'string' || normalize(body.code) !== normalize(examCode || 'luxor')) {
+  if (typeof body?.code !== 'string' || !isValidExamCode(body.code, examCode)) {
     return { status: 403, body: { error: 'Codewort ungültig.' } };
   }
   const record = sanitizeRecord(body.record);

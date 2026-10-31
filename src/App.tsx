@@ -547,7 +547,7 @@ export default function App() {
               <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-amber-300/60">
                 <span className="flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5" />
-                  Tipp: Wenn du dein OneNote ausgefüllt hast, hole dir das Codewort bei der Lehrperson für die Prüfung & Urkunde!
+                  Tipp: Die markierten Buchstaben in deinem OneNote ergeben das Lösungswort für die Prüfung & Urkunde!
                 </span>
                 <span className="hidden sm:inline">Konsequentes Schweizer Hochdeutsch (ss)</span>
               </div>
