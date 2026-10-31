@@ -563,6 +563,12 @@ export default function App() {
         <p>
           Interaktives historisches Lernprojekt für die 5. Klasse der <strong>Primarschule Erlenmatt</strong> in Basel • OneNote-Fragebogen, Prüfung & persönliche Pharaonen-Urkunde
         </p>
+        <a
+          href="/lehrer"
+          className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-md border border-amber-500/30 text-amber-300/80 hover:text-amber-200 hover:border-amber-400"
+        >
+          <Lock className="w-3 h-3" /> Lehreransicht
+        </a>
       </footer>
 
       {/* MODAL: LEXIKON */}

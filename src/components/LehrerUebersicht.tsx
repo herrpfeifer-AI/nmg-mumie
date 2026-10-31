@@ -12,6 +12,7 @@ import {
   LogOut,
   Printer,
   Gamepad2,
+  ArrowLeft,
 } from 'lucide-react';
 import { QUIZ_QUESTIONS, CLOZE_ITEMS } from './PharaoPruefung';
 
@@ -314,6 +315,12 @@ export const LehrerUebersicht: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2 print:hidden">
+            <a
+              href="/"
+              className="px-3 py-2 rounded-lg bg-amber-500/20 border border-amber-400/60 text-amber-200 text-xs font-bold flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Zur Mumien-App
+            </a>
             <button
               onClick={() => load(password)}
               className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-xs flex items-center gap-1.5"
