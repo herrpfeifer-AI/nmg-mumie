@@ -345,11 +345,11 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
 
 // ------------------------------------------------------------------
 // Prüfungs-Codewort (nur auf dem Server, damit es nicht im Browser-Code steht)
-// Standard: das Lösungswort aus dem OneNote («schakal») und das Lehrer-Codewort «luxor».
-// In Vercel mit EXAM_CODE änderbar, mehrere Wörter mit Komma trennen (z. B. «schakal,luxor»).
+// Standard: das Lösungswort aus dem OneNote («schakal»).
+// In Vercel mit EXAM_CODE änderbar, mehrere Wörter mit Komma trennen (z. B. «schakal,nil»).
 // ------------------------------------------------------------------
 
-export const DEFAULT_EXAM_CODES = 'schakal,luxor';
+export const DEFAULT_EXAM_CODES = 'schakal';
 
 /** Stimmt das eingegebene Wort mit einem der erlaubten Codewörter überein? (Leerzeichen und Gross/klein egal) */
 export function isValidExamCode(input: string, allowed: string | undefined): boolean {
