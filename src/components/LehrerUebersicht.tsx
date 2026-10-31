@@ -276,6 +276,9 @@ export const LehrerUebersicht: React.FC = () => {
           <input
             type="password"
             autoFocus
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={pwInput}
             onChange={(e) => setPwInput(e.target.value)}
             placeholder="Lehrer-Passwort"

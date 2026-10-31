@@ -121,7 +121,14 @@ function checkTeacher(password: unknown, teacherCode: string | undefined): ApiRe
       body: { error: 'Das Lehrer-Passwort ist noch nicht eingerichtet (Vercel-Variable TEACHER_CODE).' },
     };
   }
-  if (typeof password !== 'string' || password !== teacherCode) {
+  // Tolerant vergleichen: Leerzeichen am Rand, Gross-/Kleinschreibung und
+  // unterschiedliche Umlaut-Kodierungen (z. B. vom iPad) sollen nicht stören.
+  const clean = (v: string) => v.normalize('NFC').trim().toLowerCase();
+  if (typeof password !== 'string' || clean(password) !== clean(teacherCode)) {
+    console.warn(
+      `Lehrer-Login abgelehnt (eingegeben: ${typeof password === 'string' ? clean(password).length : '-'} Zeichen, ` +
+        `erwartet: ${clean(teacherCode).length} Zeichen)`,
+    );
     return { status: 403, body: { error: 'Passwort falsch.' } };
   }
   return null;
