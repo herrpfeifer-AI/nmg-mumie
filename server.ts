@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleChat, checkExamCode, getStatus } from './lib/pharao.js';
+import { saveProgress, teacherAction } from './lib/results.js';
 
 dotenv.config();
 
@@ -30,6 +31,24 @@ app.post('/api/chat', async (req, res) => {
 app.post('/api/unlock', (req, res) => {
   const result = checkExamCode(req.body, process.env.EXAM_CODE);
   res.status(result.status).json(result.body);
+});
+
+app.post('/api/progress', async (req, res) => {
+  try {
+    const result = await saveProgress(req.body, process.env.EXAM_CODE);
+    res.status(result.status).json(result.body);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Speichern fehlgeschlagen.', details: error?.message });
+  }
+});
+
+app.post('/api/results', async (req, res) => {
+  try {
+    const result = await teacherAction(req.body, process.env.TEACHER_CODE);
+    res.status(result.status).json(result.body);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Resultate konnten nicht geladen werden.' });
+  }
 });
 
 app.get('/api/status', async (_req, res) => {

@@ -25,7 +25,7 @@ interface PharaoPruefungProps {
 }
 
 // 4 targeted questions based on the Mummy's facts
-const QUIZ_QUESTIONS = [
+export const QUIZ_QUESTIONS = [
   {
     id: 1,
     question: 'In wie vielen ineinandergeschachtelten Särgen (Sarkophagen) lag Tutanchamuns Mumie?',
@@ -87,7 +87,7 @@ interface ClozeItem {
   hint: string;
 }
 
-const CLOZE_ITEMS: ClozeItem[] = [
+export const CLOZE_ITEMS: ClozeItem[] = [
   { id: 1, word: 'Wüstensand', hint: 'Wo wurden arme Menschen begraben? Es ist dort sehr heiss und trocken.' },
   { id: 2, word: 'Nase', hint: 'Durch welche Öffnung im Kopf kommt man ans Gehirn, ohne den Kopf aufzuschneiden?' },
   { id: 3, word: 'Kanopen', hint: 'So heissen die besonderen Krüge für die Organe.' },
@@ -202,6 +202,19 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
 
   // State 5: Spiel nach der Urkunde
   const [showGame, setShowGame] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameProgress, setGameProgress] = useState({ level: 0, gold: 0, won: false });
+
+  // Für die Lehrerübersicht
+  const [studentId] = useState(() =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
+  );
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [certificateAt, setCertificateAt] = useState<string | null>(null);
+  const [clozeWrongWords, setClozeWrongWords] = useState<Record<number, string[]>>({});
+  const [syncState, setSyncState] = useState<'idle' | 'ok' | 'error'>('idle');
   const [certificateDate] = useState(() =>
     new Date().toLocaleDateString('de-CH', { day: '2-digit', month: 'long', year: 'numeric' }),
   );
@@ -318,6 +331,11 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       wrong.forEach((id) => (next[id] = (next[id] || 0) + 1));
       return next;
     });
+    setClozeWrongWords((prev) => {
+      const next = { ...prev };
+      wrong.forEach((id) => (next[id] = [...(next[id] || []), clozeAnswers[id]].filter(Boolean)));
+      return next;
+    });
     const returned = wrong.map((id) => clozeAnswers[id]).filter(Boolean);
     setClozeAnswers((prev) => {
       const next = { ...prev };
@@ -351,6 +369,53 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
     tries: (clozeWrongCount[item.id] || 0) + 1,
   }));
   const allFirstTry = quizRetries.length === 0 && clozeRetries.length === 0;
+
+  // Urkunde erhalten -> Zeitpunkt merken
+  useEffect(() => {
+    if (allDone && !certificateAt) setCertificateAt(new Date().toISOString());
+  }, [allDone, certificateAt]);
+
+  // Fortschritt für die Lehrerübersicht speichern (kurz verzögert, damit nicht jeder Klick einzeln geht)
+  useEffect(() => {
+    if (!hasStarted || !startedAt) return;
+    const record = {
+      id: studentId,
+      name: studentName.trim(),
+      klasse: studentClass,
+      startedAt,
+      quiz: QUIZ_QUESTIONS.map((q, i) => ({
+        nr: i + 1,
+        solved: !!quizSolved[q.id],
+        tries: quizSolved[q.id] ? quizTries(q.id) : quizWrongPicks[q.id]?.length || 0,
+        wrong: (quizWrongPicks[q.id] || []).map((idx) => q.options[idx]),
+      })),
+      cloze: {
+        rounds: clozeRounds,
+        solved: clozeSolved,
+        blanks: CLOZE_ITEMS.map((item) => ({
+          nr: item.id,
+          wrongCount: clozeWrongCount[item.id] || 0,
+          wrongWords: clozeWrongWords[item.id] || [],
+        })),
+      },
+      score: totalScore,
+      maxScore,
+      certificateAt,
+      game: { started: gameStarted, ...gameProgress },
+    };
+    const timer = setTimeout(() => {
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: passwordInput, record }),
+        keepalive: true,
+      })
+        .then((res) => setSyncState(res.ok ? 'ok' : 'error'))
+        .catch(() => setSyncState('error'));
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasStarted, startedAt, quizSolved, quizWrongPicks, clozeRounds, clozeSolved, certificateAt, gameStarted, gameProgress]);
 
   const royalPersona = generatePharaohName(studentName);
 
@@ -478,6 +543,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
               disabled={!studentName.trim()}
               onClick={() => {
                 setHasStarted(true);
+                setStartedAt(new Date().toISOString());
                 playSuccessChime(soundEnabled);
               }}
               className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40 text-amber-950 font-extrabold text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 mt-4"
@@ -485,6 +551,10 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
               <span>Zur Pharaonen-Prüfung starten</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+            <p className="text-[11px] text-amber-200/60 text-center leading-relaxed">
+              Deine Lehrperson sieht deinen Vornamen, deine Klasse und wie es dir in der Prüfung läuft.
+              Nach 30 Tagen wird alles automatisch gelöscht.
+            </p>
           </div>
         </div>
       </div>
@@ -509,6 +579,8 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             </h2>
             <p className="text-xs text-amber-300/80">
               Forscher/in: <strong>{studentName}</strong> (Klasse {studentClass})
+              {syncState === 'ok' && <span className="ml-2 text-emerald-400/80">• gespeichert ✓</span>}
+              {syncState === 'error' && <span className="ml-2 text-rose-300/80">• nicht gespeichert</span>}
             </p>
           </div>
         </div>
@@ -893,12 +965,13 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             <button
               onClick={() => {
                 setShowGame(true);
+                setGameStarted(true);
                 playMysticChime(soundEnabled);
               }}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-sm flex items-center gap-2 shadow-xl transition-all"
             >
               <Gamepad2 className="w-4 h-4" />
-              <span>Belohnung: Mumien-Spiel starten</span>
+              <span>{gameStarted ? 'Weiterspielen' : 'Belohnung: Mumien-Spiel starten'}</span>
             </button>
 
             <button
@@ -912,12 +985,16 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       )}
 
       {/* BELOHNUNGS-SPIEL */}
-      {allDone && showGame && (
-        <MumienSpiel
-          playerName={studentName}
-          soundEnabled={soundEnabled}
-          onClose={() => setShowGame(false)}
-        />
+      {allDone && gameStarted && (
+        <div hidden={!showGame}>
+          <MumienSpiel
+            playerName={studentName}
+            soundEnabled={soundEnabled}
+            active={showGame}
+            onClose={() => setShowGame(false)}
+            onProgress={setGameProgress}
+          />
+        </div>
       )}
 
     </div>

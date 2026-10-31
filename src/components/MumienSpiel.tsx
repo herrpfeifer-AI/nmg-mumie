@@ -6,7 +6,7 @@ import {
   ArrowRight,
   Heart,
   Coins,
-  X,
+  Award,
   Trophy,
   RotateCcw,
   Moon,
@@ -26,7 +26,11 @@ import { playMysticChime, playSuccessChime, playTombGong } from '../utils/soundE
 interface MumienSpielProps {
   playerName: string;
   soundEnabled: boolean;
+  /** false, solange die Urkunde angezeigt wird (Spiel bleibt im Hintergrund erhalten) */
+  active?: boolean;
   onClose: () => void;
+  /** meldet den Spielstand für die Lehrerübersicht */
+  onProgress?: (p: { level: number; gold: number; won: boolean }) => void;
 }
 
 type Dir = 'up' | 'down' | 'left' | 'right';
@@ -266,12 +270,26 @@ const MummySprite: React.FC<{ sad?: boolean }> = ({ sad }) => (
   </svg>
 );
 
-export const MumienSpiel: React.FC<MumienSpielProps> = ({ playerName, soundEnabled, onClose }) => {
+export const MumienSpiel: React.FC<MumienSpielProps> = ({
+  playerName,
+  soundEnabled,
+  active = true,
+  onClose,
+  onProgress,
+}) => {
   const [g, setG] = useState<GameState>(() => startLevel({}, 0, START_LIVES, 0));
   const [highscore, setHighscore] = useState<number>(() => readHighscore());
   const [hitCell, setHitCell] = useState<Pos | null>(null);
   const gRef = useRef(g);
   gRef.current = g;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  // Spielstand melden, wenn ein Level startet, geschafft oder das Spiel gewonnen ist
+  useEffect(() => {
+    onProgress?.({ level: g.level + 1, gold: g.gold, won: g.phase === 'won' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g.level, g.phase === 'won', g.phase === 'shop']);
 
   const sound = (kind: 'mystic' | 'success' | 'gong') => {
     if (kind === 'mystic') playMysticChime(soundEnabled);
@@ -404,7 +422,7 @@ export const MumienSpiel: React.FC<MumienSpielProps> = ({ playerName, soundEnabl
         w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right',
       };
       const dir = map[e.key];
-      if (!dir || gRef.current.phase !== 'play') return;
+      if (!dir || !activeRef.current || gRef.current.phase !== 'play') return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       e.preventDefault();
@@ -560,10 +578,11 @@ export const MumienSpiel: React.FC<MumienSpielProps> = ({ playerName, soundEnabl
           </span>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600"
-            title="Spiel schliessen und zur Urkunde zurück"
+            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/60 flex items-center gap-1.5 text-xs sm:text-sm"
+            title="Urkunde anzeigen – das Spiel wartet hier auf dich"
           >
-            <X className="w-4 h-4" />
+            <Award className="w-4 h-4" />
+            <span>Meine Urkunde</span>
           </button>
         </div>
       </div>
