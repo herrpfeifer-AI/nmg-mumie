@@ -1,32 +1,51 @@
-// Gemeinsame Logik für den Pharao-Chat.
-// Wird von api/chat.ts (Vercel) und server.ts (lokal / AI Studio) genutzt.
-// Der API-Schlüssel wird nur hier auf dem Server verwendet und nie an den Browser geschickt.
+// Gemeinsame Logik für den Pharao-Chat und die Prüfung.
+// Wird von den Vercel-Funktionen in api/ und von server.ts (lokal / AI Studio) genutzt.
+// Der API-Schlüssel und das Prüfungs-Codewort werden nur hier auf dem Server verwendet
+// und nie an den Browser geschickt.
 import { GoogleGenAI } from '@google/genai';
 
-export const TUTANCHAMUN_SYSTEM_PROMPT = `Du bist Pharao Tutanchamun, der nach über 3000 Jahren als sprechende Mumie erwacht ist. 
-Du sprichst mit Schülerinnen und Schülern einer 5. Klasse der Primarschule Erlenmatt in Basel.
+export const TUTANCHAMUN_SYSTEM_PROMPT = `Du bist Pharao Tutanchamun, der nach über 3000 Jahren als sprechende Mumie erwacht ist.
+Du sprichst mit Schülerinnen und Schülern einer 5. Klasse der Primarschule Erlenmatt in Basel (10 bis 12 Jahre alt).
+Sie füllen mit deiner Hilfe einen Fragebogen in OneNote aus.
 
 DEINE ROLLE & SPRACHSTIL:
 - Sei geheimnisvoll, freundlich, erhaben und lebendig (z. B. «Seid gegrüsst, neugierige Forscher!» oder «Ah, eine Frage aus der fernen Zukunft...»).
-- Halte deine Antworten altersgerecht und verständlich (maximal 3 bis 5 Sätze pro Antwort), damit die Kinder nicht von Text überflutet werden.
+- Halte deine Antworten altersgerecht, in einfachen und kurzen Sätzen (maximal 3 bis 4 Sätze, danach die Rückfrage).
 - Nutze konsequent Schweizer Hochdeutsch (immer «ss», niemals «ß»! Schreibe «grüssen», «weiss», «schliessen», «heiss», «gross»).
-- Beantworte immer nur genau das, wonach die Kinder fragen.
+- Beantworte zuerst genau das, wonach gefragt wurde.
 
-WICHTIG – FEHLERTOLERANZ & VERSTEHEN VON KINDERFRAGEN:
-- Kinder machen Tippfehler, nutzen Umgangssprache oder kennen die genauen Fachbegriffe noch nicht.
-- Suche NIE nach exakten Wörtern, sondern erfasse stets den SINN der Kinderfrage!
-- Synonyme & Umschreibungen, die du sofort erkennst:
-  * «Herrschaftszeichen / Gegenstände / Stöcke / Dinge in den Händen / Symbole / Was hältst du?» -> Bezieht sich auf: Herrschaftsstab (Krummstab), königlicher Dreschflegel und das Lebenszeichen (Anch).
-  * «Krüge / Töpfe / Schalen / Gefässe für Organe / Magendosen» -> Bezieht sich auf: Kanopen.
-  * «Kisten / Betten / Schachteln / Särge / Kasten» -> Bezieht sich auf: Sarkophage / Holzschreine.
-  * «Salz / Wasser / Bad / Flüssigkeit zum Trocknen» -> Bezieht sich auf: Natronlauge (50-70 Tage).
-  * «Tuch / Bandagen / Binden / Klopapier / Wickel» -> Bezieht sich auf: Leinenstreifen / Einbalsamierung.
-  * «Mund aufmachen / Mund Ritual» -> Bezieht sich auf: Ritual der Mundöffnung (damit der Pharao essen, trinken und sprechen kann).
-- Wenn eine Frage undeutlich oder unvollständig formuliert ist (z. B. «was hast du in hand?» oder «welche töpfe»), rate wohlwollend mit und antworte passend aus deinem Wissen.
-- Wenn du eine Frage wirklich absolut nicht verstehst, frage neugierig nach:
-  «Meine alten Ohren verstehen dieses Wort noch nicht ganz. Meinst du vielleicht meine Grabbeigaben, meinen Sarg oder wie mein Körper einbalsamiert wurde?»
+RÜCKFRAGEN – SO HÄLTST DU DAS GESPRÄCH LEBENDIG:
+- Beende fast jede Antwort mit EINER kurzen, neugierigen Rückfrage an das Kind. Wechsle zwischen diesen Arten ab:
+  * Weiterführen: «Möchtest du wissen, was danach mit meinem Körper geschah?»
+  * Mitdenken lassen: «Was glaubst du: Warum haben die Ägypter das Gehirn wohl nicht aufbewahrt?»
+  * Zur Auswahl stellen: «Soll ich dir von meiner Totenmaske oder von meinen vier Särgen erzählen?»
+  * Überprüfen: «Weisst du noch, wie die Krüge für die Organe heissen?»
+- Wenn ein Kind auf eine Mitdenk-Frage antwortet, lobe gute Gedanken konkret und ergänze freundlich, was noch fehlt oder nicht stimmt. Sag nie einfach nur «falsch».
+- Wenn ein Kind nur «ja», «ok», «weiter» oder «mehr» schreibt, erzähle das Angebotene aus deiner letzten Rückfrage.
+- Stelle nie mehrere Fragen auf einmal.
 
-DEIN HISTORISCHES WISSEN (ausschliesslich basierend auf diesen Fakten):
+WICHTIG – TIPPFEHLER, MUNDART & UNVOLLSTÄNDIGE FRAGEN:
+- Die Kinder schreiben oft mit Tippfehlern, ohne Gross-/Kleinschreibung, ohne Satzzeichen, mit Baseldeutschen oder Schweizerdeutschen Wörtern oder in Bruchstücken.
+- Lies jede Frage so, wie ein geduldiger Lehrer sie lesen würde: Suche den wahrscheinlichsten SINN, nie das exakte Wort.
+- Beispiele, die du sofort verstehen musst:
+  * «mumifitzirung», «mumi fizieren», «momifizirung» -> Mumifizierung
+  * «sarkofag», «sarkopharg», «sarg», «kiste», «kasten», «bett», «schachtel» -> Sarkophage / Holzschreine
+  * «kanopn», «kanoppen», «krüge», «töpfe», «gfäss», «schalen», «dosen für organe» -> Kanopen
+  * «natron», «natrum», «salz», «salzbad», «bad», «wasser», «flüssigkeit zum trocknen» -> Natronlauge (50 bis 70 Tage)
+  * «leine», «leinen», «tuch», «bandagen», «binden», «verband», «klopapier», «wickel» -> Leinenstreifen
+  * «hirn», «gehirn», «nase», «haken», «stäbchen» -> Gehirn durch die Nase entfernt
+  * «stöcke», «dinge in der hand», «was hesch in de händ», «symbole», «zeichen», «insignien» -> Krummstab, Dreschflegel, Anch
+  * «maske», «goldgesicht», «gesicht aus gold» -> Totenmaske
+  * «karter», «howard», «entdekt», «gefunde», «wer hat dich gefunden» -> Entdeckung 1922
+  * «fluch», «verflucht», «flucht» (wenn es um das Grab geht) -> Fluch des Pharao
+  * «wie bisch gstorbe», «tod», «gestorbn», «wie alt» -> Tod / Alter
+  * «mund ritual», «mund auf», «mundöffnig» -> Mundöffnungsritual
+- Wenn du dir bei einer Frage ziemlich sicher bist, antworte direkt. Du musst den Tippfehler nicht korrigieren und auch nicht erwähnen.
+- Wenn zwei Bedeutungen möglich sind, rate die wahrscheinlichere, beantworte sie kurz und frage am Schluss nach: «Oder meintest du ...?»
+- Nur wenn du wirklich gar nichts verstehst, frage freundlich nach und biete zwei bis drei passende Themen zur Auswahl an, zum Beispiel:
+  «Meine alten Ohren verstehen dieses Wort noch nicht ganz. Meinst du vielleicht meine Särge, die Krüge für meine Organe oder wie mein Körper getrocknet wurde?»
+
+DEIN HISTORISCHES WISSEN (halte dich an diese Fakten und erfinde nichts dazu):
 1. Wer du bist & Entdeckung des Grabes:
    - Gestorben mit höchstens 22 Jahren, schlank, 1,65 m gross.
    - Todesursache: Schädelbruch auf Röntgenbildern; möglich ist ein Wagenunfall oder Mord.
@@ -49,140 +68,199 @@ DEIN HISTORISCHES WISSEN (ausschliesslich basierend auf diesen Fakten):
      4. 50 bis 70 Tage in Natronlauge einlegen (entzieht jegliches Wasser).
      5. Leichnam mit Leinenstreifen umwickeln, Amulette und Schmuck dazwischenlegen.
      6. Mundöffnungsritual durch den Priester (damit der Tote im Jenseits essen, trinken und sprechen kann).
+- Wenn ein Kind etwas fragt, das zu Ägypten passt, aber nicht in deinen Fakten steht (z. B. Pyramiden, Nil, Götter), antworte kurz und vorsichtig mit allgemein bekanntem Wissen und führe dann mit einer Rückfrage zu deinen Themen zurück.
 
 ABWEHR BEI THEMENFREMDEN FRAGEN:
 - Nur wenn die Kinder nach Dingen fragen, die absolut gar nichts mit Ägypten zu tun haben (z. B. «Kennst du Fortnite?», «Was gibt es zum Zmittag?», Mathehausaufgaben, Computerspiele), antworte:
-  «Darüber weiss ein Pharao aus dem alten Ägypten nichts. Frage mich lieber über meine Pyramiden, mein Grab oder meine Mumie!»`;
+  «Darüber weiss ein Pharao aus dem alten Ägypten nichts. Frage mich lieber über meine Pyramiden, mein Grab oder meine Mumie!»
+- Bei unfreundlichen oder unpassenden Nachrichten bleibst du ruhig und würdevoll und lenkst zurück auf Ägypten.`;
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY = 10;
 
 type HistoryEntry = { role: string; content: string };
 
-export type ChatResult = { status: number; body: Record<string, string> };
+export type ChatResult = { status: number; body: Record<string, unknown> };
 
-function fallbackReply(message: string): string {
-  const lower = message.toLowerCase();
-  let rawReply = '';
-    if (lower.includes('totenmaske') || lower.includes('maske') || lower.includes('gesicht')) {
-      rawReply = 'Seid gegrüsst, neugierige Forscher! Meine weltberühmte Totenmaske besteht aus über zehn Kilogramm massivem Gold und kostbaren Halbedelsteinen wie Lapislazuli. Sie sollte mein Antlitz für alle Ewigkeit unversehrt bewahren. Möchtest du auch wissen, worin mein Körper sonst noch ruhte?';
-    } else if (
-      lower.includes('hand') ||
-      lower.includes('hände') ||
-      lower.includes('haende') ||
-      lower.includes('stöcke') ||
-      lower.includes('stoecke') ||
-      lower.includes('krummstab') ||
-      lower.includes('dreschflegel') ||
-      lower.includes('anch') ||
-      lower.includes('insign') ||
-      lower.includes('symbol') ||
-      lower.includes('gegenstände') ||
-      lower.includes('gegenstaende') ||
-      lower.includes('dinge') ||
-      lower.includes('halten') ||
-      lower.includes('hältst') ||
-      lower.includes('haeltst')
-    ) {
-      rawReply = 'In meinen königlichen Händen halte ich drei heilige Zeichen: den Krummstab als Herrschaftszeichen des guten Hirten, den königlichen Dreschflegel und das Anch – das Symbol für das ewige Leben! Diese Insignien zeigen meine Macht als Pharao.';
-    } else if (
-      lower.includes('krone') ||
-      lower.includes('helm') ||
-      lower.includes('kopf') ||
-      lower.includes('perücke') ||
-      lower.includes('peruecke') ||
-      lower.includes('nemes') ||
-      lower.includes('hut')
-    ) {
-      rawReply = 'Auf meinem königlichen Haupt trug ich verschiedene Prachtstücke: das berühmte blau-gelb gestreifte Nemes-Kopftuch, die prächtige Hemhemet-Krone, eine Perücke mit gelbem Band oder den roten Helm von Unterägypten sowie die weisse Krone von Oberägypten!';
-    } else if (
-      lower.includes('krüg') ||
-      lower.includes('krueg') ||
-      lower.includes('töpfe') ||
-      lower.includes('toepfe') ||
-      lower.includes('topf') ||
-      lower.includes('kanopen') ||
-      lower.includes('organ') ||
-      lower.includes('dosen') ||
-      lower.includes('eingeweide') ||
-      lower.includes('bauch')
-    ) {
-      rawReply = 'Ah, du meinst die Kanopen! Das sind vier besondere Krüge mit Götterköpfen, in die meine entnommenen Organe gelegt wurden. Die Bauchhöhle selbst wurde gereinigt, mit duftender Myrrhe gefüllt und sauber zugenäht.';
-    } else if (
-      lower.includes('kiste') ||
-      lower.includes('kasten') ||
-      lower.includes('schachtel') ||
-      lower.includes('bett') ||
-      lower.includes('sarg') ||
-      lower.includes('sarkophag') ||
-      lower.includes('schrein')
-    ) {
-      rawReply = 'Mein Körper lag geschützt in vier ineinandergeschachtelten Särgen wie eine riesige Puppe: Der äusserste aus Stein, zwei aus bemaltem Holz und der innerste aus purem Gold! Umgeben waren sie noch von vier vergoldeten Holzschreinen.';
-    } else if (
-      lower.includes('salz') ||
-      lower.includes('bad') ||
-      lower.includes('flüssigkeit') ||
-      lower.includes('fluessigkeit') ||
-      lower.includes('trocknen') ||
-      lower.includes('natron') ||
-      lower.includes('lauge')
-    ) {
-      rawReply = 'Das Salzbad war das grosse Geheimnis: Ganze 50 bis 70 Tage lang lag mein Körper in Natronlauge! Diese Flüssigkeit entzog dem Gewebe jedes noch so kleine Tröpfchen Wasser, damit der Körper nicht verwesen konnte.';
-    } else if (
-      lower.includes('tuch') ||
-      lower.includes('tücher') ||
-      lower.includes('tuecher') ||
-      lower.includes('bandagen') ||
-      lower.includes('binden') ||
-      lower.includes('wickel') ||
-      lower.includes('klopapier') ||
-      lower.includes('leinen') ||
-      lower.includes('streifen') ||
-      lower.includes('einbalsam')
-    ) {
-      rawReply = 'Nach dem Salzbad wurde der Körper liebevoll mit hunderten Metern feinster Leinenstreifen umwickelt! Zwischen die Binden legten die Priester goldene Amulette und Schmuckstücke, die meine Seele auf der Reise ins Jenseits beschützen sollten.';
-    } else if (
-      lower.includes('mund') ||
-      lower.includes('aufmachen') ||
-      lower.includes('sprechen') ||
-      lower.includes('essen') ||
-      lower.includes('trinken') ||
-      lower.includes('ritual')
-    ) {
-      rawReply = 'Das Ritual der Mundöffnung war ein heiliger Moment: Ein Hohepriester berührte symbolisch meinen Mund und meine Augen mit Werkzeugen. So sollte ich im Jenseits wieder sprechen, essen und das ewige Licht sehen können!';
-    } else if (lower.includes('mumifiz') || lower.includes('balsamier')) {
-      rawReply = 'Die Mumifizierung hatte sechs wichtige Schritte: Zuerst wurde das Gehirn durch die Nase entfernt und die Organe kamen in Kanopen. Nach Myrrhe im Bauch lag der Körper 50 bis 70 Tage in Natronlauge, wurde in Leinen gehüllt und durch die Mundöffnung erweckt!';
-    } else if (lower.includes('gehirn') || lower.includes('hirn') || lower.includes('nase')) {
-      rawReply = 'Ganz genau! Das Gehirn wurde mit einem feinen Metallstäbchen vorsichtig durch die Nase herausgezogen. Die Ägypter dachten, der Verstand sitze im Herzen, daher brauchte man das Gehirn im Jenseits nicht.';
-    } else if (lower.includes('arm') || lower.includes('reich') || lower.includes('wüstensand') || lower.includes('sand')) {
-      rawReply = 'Nur Pharaonen und reiche Bürger bekamen eine so teure Einbalsamierung! Arme Ägypter wurden einfach im glühend heissen Wüstensand vergraben – und weil der Sand so trocken war, blieben ihre Körper oft sogar noch besser erhalten!';
-    } else if (lower.includes('tod') || lower.includes('gestorben') || lower.includes('todesursache') || lower.includes('alt') || lower.includes('alter') || lower.includes('tot')) {
-      rawReply = 'Ich war noch sehr jung, als ich starb – höchstens 22 Jahre alt! Röntgenaufnahmen zeigen einen Bruch an meinem Schädel. Forscher rätseln bis heute, ob ich bei einem Sturz vom Streitwagen verunglückte oder sogar ermordet wurde.';
-    } else if (lower.includes('fluch')) {
-      rawReply = 'Der angebliche «Fluch des Pharao» ist eine reine Erfindung der Zeitungen nach Lord Carnarvons Tod! Ich bin keineswegs wütend, sondern freue mich über den ewigen Ruhm. Ausserdem lebten die meisten Ausgräber danach noch viele gesunde Jahre!';
-    } else if (lower.includes('entdeck') || lower.includes('carter') || lower.includes('carnarvon') || lower.includes('gefunden') || lower.includes('1922') || lower.includes('grab')) {
-      rawReply = 'Am 26. November 1922 entdeckten Howard Carter und Lord Carnarvon nach fünf langen Jahren der vergeblichen Suche mein Grab im Tal der Könige! Es war das einzige Königsgrab, das von Grabräubern unversehrt geblieben war.';
-    } else if (
-      lower.includes('fortnite') ||
-      lower.includes('minecraft') ||
-      lower.includes('playstation') ||
-      lower.includes('game') ||
-      lower.includes('zmittag') ||
-      lower.includes('mittag') ||
-      lower.includes('witz') ||
-      lower.includes('mathe') ||
-      lower.includes('auto') ||
-      lower.includes('handy') ||
-      lower.includes('tiktok') ||
-      lower.includes('brawl') ||
-      lower.includes('roblox')
-    ) {
-      rawReply = 'Darüber weiss ein Pharao aus dem alten Ägypten nichts. Frage mich lieber über meine Pyramiden, mein Grab oder meine Mumie!';
-    } else {
-      rawReply = 'Meine alten Ohren verstehen dieses Wort noch nicht ganz. Meinst du vielleicht meine Grabbeigaben, meinen Sarg oder wie mein Körper einbalsamiert wurde?';
-    }
-  return rawReply;
+// ------------------------------------------------------------------
+// Ersatzantworten mit Tippfehler-Toleranz
+// (werden nur genutzt, wenn Gemini nicht rechtzeitig antwortet)
+// ------------------------------------------------------------------
+
+/** Kleinschreibung, Umlaute ausschreiben, Satzzeichen weg. */
+export function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** Wie viele Tippfehler bei einem Stichwort dieser Länge noch erlaubt sind. */
+function tolerance(len: number): number {
+  if (len <= 3) return 0;
+  if (len <= 5) return 1;
+  if (len <= 8) return 2;
+  return 3;
+}
+
+/**
+ * Passt ein Wort des Kindes zu einem Stichwort?
+ * Stichwörter sind Wortanfänge («mumifiz»), damit auch «mumifizierung» passt.
+ */
+export function wordMatches(word: string, keyword: string): boolean {
+  if (word.length < 3) return false;
+  // Kurze Stichwörter nur am Wortanfang («arm» soll nicht in «warm» passen)
+  if (keyword.length <= 4 ? word.startsWith(keyword) : word.includes(keyword)) return true;
+  const tol = tolerance(keyword.length);
+  if (tol === 0) return false;
+  // Ganzes Wort mit dem Stichwort vergleichen ...
+  if (levenshtein(word, keyword) <= tol) return true;
+  // ... oder nur den Wortanfang (für zusammengesetzte Wörter und Endungen)
+  for (let extra = -1; extra <= 1; extra++) {
+    const len = keyword.length + extra;
+    if (len >= 3 && word.length > len && levenshtein(word.slice(0, len), keyword) <= tol) return true;
+  }
+  return false;
+}
+
+interface FallbackTopic {
+  keywords: string[];
+  reply: string;
+}
+
+// Stichwörter in normalisierter Form (ä -> ae usw.), möglichst als Wortanfang.
+const FALLBACK_TOPICS: FallbackTopic[] = [
+  {
+    keywords: ['totenmaske', 'maske', 'gesicht', 'goldgesicht', 'lapislazuli'],
+    reply:
+      'Meine weltberühmte Totenmaske besteht aus massivem Gold und kostbaren Halbedelsteinen wie Lapislazuli. Sie sollte mein Gesicht für alle Ewigkeit bewahren. Möchtest du wissen, in wie vielen Särgen ich darunter lag?',
+  },
+  {
+    keywords: ['hand', 'haend', 'stoeck', 'stock', 'stab', 'krummstab', 'dreschflegel', 'flegel', 'anch', 'ankh', 'insign', 'symbol', 'zeichen', 'gegenstaend', 'dinge', 'halten', 'haeltst', 'hesch'],
+    reply:
+      'In meinen königlichen Händen halte ich drei heilige Zeichen: den Krummstab, den Dreschflegel und das Anch, das Zeichen für das ewige Leben. Sie zeigen meine Macht als Pharao. Was glaubst du: Warum ist gerade ein Hirtenstab ein Zeichen für einen König?',
+  },
+  {
+    keywords: ['krone', 'helm', 'kopf', 'peruecke', 'peruek', 'nemes', 'kopftuch', 'hut'],
+    reply:
+      'Auf meinem Kopf trug ich verschiedene Prachtstücke: das blau-gelb gestreifte Nemes-Kopftuch, die Hemhemet-Krone, eine Perücke mit gelbem Band und die roten und weissen Kronen für Unter- und Oberägypten. Soll ich dir als Nächstes von meiner goldenen Totenmaske erzählen?',
+  },
+  {
+    keywords: ['kanop', 'kanopen', 'krueg', 'krug', 'toepf', 'topf', 'gefaess', 'gfaess', 'organ', 'dose', 'eingeweid', 'bauch', 'myrrhe'],
+    reply:
+      'Du meinst die Kanopen! Das sind besondere Krüge, in die meine entnommenen Organe gelegt wurden. Die Bauchhöhle wurde gereinigt, mit duftender Myrrhe gefüllt und zugenäht. Weisst du schon, was danach mit dem ganzen Körper geschah?',
+  },
+  {
+    keywords: ['kiste', 'kasten', 'schachtel', 'bett', 'sarg', 'saerge', 'sarkophag', 'sarkofag', 'schrein'],
+    reply:
+      'Mein Körper lag in vier Särgen, die ineinander steckten wie bei einer Puppe: Der äusserste aus Stein, zwei aus bemaltem Holz und der innerste aus purem Gold! Darum herum standen noch vier vergoldete Holzschreine. Rate mal: Aus welchem Material war der innerste Sarg?',
+  },
+  {
+    keywords: ['salz', 'bad', 'fluessig', 'trockn', 'natron', 'natrum', 'lauge', 'wasser'],
+    reply:
+      'Das Salzbad war ein grosses Geheimnis: 50 bis 70 Tage lang lag mein Körper in Natronlauge! Sie zog jedes kleine Tröpfchen Wasser heraus, damit der Körper nicht verfaulen konnte. Möchtest du wissen, womit man mich danach eingewickelt hat?',
+  },
+  {
+    keywords: ['tuch', 'tuecher', 'bandage', 'binde', 'verband', 'wickel', 'klopapier', 'leinen', 'leine', 'streifen', 'einbalsam', 'amulett'],
+    reply:
+      'Nach dem Salzbad wurde mein Körper mit vielen Metern feinster Leinenstreifen umwickelt! Zwischen die Binden legten die Priester Amulette und Schmuck, die meine Seele beschützen sollten. Weisst du, welches Ritual ganz am Schluss kam?',
+  },
+  {
+    keywords: ['mund', 'aufmach', 'oeffnung', 'oeffnig', 'ritual', 'priester', 'essen', 'trinken', 'sprechen'],
+    reply:
+      'Das Ritual der Mundöffnung war ein heiliger Moment: Ein Priester berührte meinen Mund mit besonderen Werkzeugen. So sollte ich im Jenseits wieder sprechen, essen und trinken können! Was glaubst du: Warum war das für die Ägypter so wichtig?',
+  },
+  {
+    keywords: ['mumifiz', 'mumi', 'mumie', 'balsamier', 'schritt', 'ablauf'],
+    reply:
+      'Die Mumifizierung hatte sechs Schritte: Gehirn durch die Nase entfernen, Organe in die Kanopen, Myrrhe in den Bauch, 50 bis 70 Tage Natronlauge, Leinenstreifen umwickeln und zum Schluss die Mundöffnung. Über welchen Schritt möchtest du mehr wissen?',
+  },
+  {
+    keywords: ['gehirn', 'hirn', 'nase', 'haken', 'staebchen', 'kopfinhalt'],
+    reply:
+      'Das Gehirn wurde mit einem feinen Stäbchen vorsichtig durch die Nase herausgezogen. Die Ägypter dachten, der Verstand sitze im Herzen, darum brauchte man das Gehirn im Jenseits nicht. Weisst du, wohin dafür die anderen Organe kamen?',
+  },
+  {
+    keywords: ['arm', 'arme', 'reich', 'wuestensand', 'wueste', 'sand'],
+    reply:
+      'Nur Pharaonen und reiche Leute bekamen eine so teure Einbalsamierung! Arme Ägypter wurden im heissen Wüstensand vergraben, und weil der Sand so trocken war, blieben ihre Körper oft sogar besser erhalten. Erstaunlich, nicht wahr? Möchtest du wissen, wie es bei mir gemacht wurde?',
+  },
+  {
+    keywords: ['tod', 'tot', 'gestorb', 'gstorb', 'sterb', 'todesursach', 'alt', 'alter', 'jahre', 'unfall', 'mord', 'schaedel'],
+    reply:
+      'Ich war noch sehr jung, als ich starb: höchstens 22 Jahre alt! Röntgenbilder zeigen einen Bruch an meinem Schädel. Forscher rätseln bis heute, ob es ein Unfall mit dem Streitwagen oder sogar ein Mord war. Was glaubst du?',
+  },
+  {
+    keywords: ['fluch', 'verflucht', 'zeitung'],
+    reply:
+      'Der «Fluch des Pharao» ist eine Erfindung der Zeitungen nach Lord Carnarvons Tod! Ich bin gar nicht wütend, sondern freue mich über meinen ewigen Ruhm. Die meisten Forscher lebten danach noch viele Jahre. Möchtest du wissen, wer mein Grab gefunden hat?',
+  },
+  {
+    keywords: ['entdeck', 'entdekt', 'carter', 'karter', 'howard', 'carnarvon', 'gefund', 'finden', '1922', 'grab', 'tal'],
+    reply:
+      'Am 26. November 1922 fanden Howard Carter und Lord Carnarvon nach fünf Jahren Suche mein Grab im Tal der Könige! Es war das einzige Königsgrab, das Grabräuber nicht geplündert hatten. Rate mal: Was lag wohl alles in meinem Grab?',
+  },
+];
+
+const OFF_TOPIC_WORDS = ['fortnite', 'minecraft', 'playstation', 'game', 'zmittag', 'mittag', 'witz', 'mathe', 'auto', 'handy', 'tiktok', 'brawl', 'roblox', 'fussball', 'youtube'];
+
+const UNCLEAR_REPLIES = [
+  'Meine alten Ohren verstehen dieses Wort noch nicht ganz. Meinst du vielleicht meine Särge, die Krüge für meine Organe oder wie mein Körper getrocknet wurde?',
+  'Hmm, diese Worte aus der Zukunft sind mir fremd. Möchtest du etwas über mein Grab, meine Totenmaske oder die Mumifizierung wissen?',
+  'Das habe ich nicht ganz verstanden, junger Forscher. Kannst du es noch einmal anders sagen? Du kannst mich zum Beispiel fragen, was ich in den Händen halte oder wer mein Grab gefunden hat.',
+];
+
+export function fallbackReply(message: string): string {
+  const words = normalize(message).split(' ').filter(Boolean);
+
+  if (words.some((w) => OFF_TOPIC_WORDS.some((k) => wordMatches(w, k) && w.length >= k.length - 1))) {
+    return 'Darüber weiss ein Pharao aus dem alten Ägypten nichts. Frage mich lieber über meine Pyramiden, mein Grab oder meine Mumie!';
+  }
+
+  let best: FallbackTopic | null = null;
+  let bestScore = 0;
+  for (const topic of FALLBACK_TOPICS) {
+    const score = topic.keywords.filter((k) => words.some((w) => wordMatches(w, k))).length;
+    if (score > bestScore) {
+      best = topic;
+      bestScore = score;
+    }
+  }
+  if (best) return best.reply;
+
+  return UNCLEAR_REPLIES[words.join('').length % UNCLEAR_REPLIES.length];
+}
+
+// ------------------------------------------------------------------
+// Chat
+// ------------------------------------------------------------------
+
+// Zuerst das neuere Modell, bei Fehler oder Verzögerung das stabile Alias.
+export const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
 export async function handleChat(input: unknown, apiKey: string | undefined): Promise<ChatResult> {
   const { message, history = [] } = (input ?? {}) as { message?: unknown; history?: unknown };
@@ -210,6 +288,8 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
     role: entry.role === 'user' ? 'user' : 'model',
     parts: [{ text: entry.content.slice(0, 2000) }],
   }));
+  // Gemini erwartet, dass das Gespräch mit dem Kind beginnt (Begrüssung weglassen).
+  while (formattedContents.length && formattedContents[0].role !== 'user') formattedContents.shift();
   formattedContents.push({ role: 'user', parts: [{ text: message }] });
 
   const fetchWithTimeout = async (modelName: string, timeoutMs: number) => {
@@ -218,7 +298,7 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
       contents: formattedContents,
       config: {
         systemInstruction: TUTANCHAMUN_SYSTEM_PROMPT,
-        temperature: 0.65,
+        temperature: 0.6,
       },
     });
     const timeoutPromise = new Promise<never>((_, reject) =>
@@ -227,13 +307,12 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
     return Promise.race([callPromise, timeoutPromise]);
   };
 
-  // Zuerst gemini-3.8-flash, bei Verzögerung gemini-flash-latest
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest'];
   let rawReply = '';
+  let source = 'gemini';
 
-  for (const modelName of candidateModels) {
+  for (const [i, modelName] of CANDIDATE_MODELS.entries()) {
     try {
-      const response = await fetchWithTimeout(modelName, 6000);
+      const response = await fetchWithTimeout(modelName, i === 0 ? 12000 : 10000);
       rawReply = response.text || '';
       if (rawReply) break;
     } catch (err: any) {
@@ -242,7 +321,11 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
   }
 
   // Kinderfreundliche Ersatzantworten, falls Gemini nicht antwortet
-  if (!rawReply) rawReply = fallbackReply(message);
+  if (!rawReply) {
+    console.warn('Gemini hat nicht geantwortet – Ersatzantwort verwendet.');
+    rawReply = fallbackReply(message);
+    source = 'fallback';
+  }
 
   // Schweizer Hochdeutsch: kein «ß»
   let cleanReply = rawReply.replace(/ß/g, 'ss').trim();
@@ -250,5 +333,39 @@ export async function handleChat(input: unknown, apiKey: string | undefined): Pr
     cleanReply = 'Seid gegrüsst! Meine Stimme hallte durch die Jahrtausende. Frage mich nach meinen Geheimnissen!';
   }
 
-  return { status: 200, body: { reply: cleanReply } };
+  return { status: 200, body: { reply: cleanReply, source } };
+}
+
+// ------------------------------------------------------------------
+// Prüfungs-Codewort (nur auf dem Server, damit es nicht im Browser-Code steht)
+// In Vercel kann es mit der Umgebungsvariable EXAM_CODE geändert werden.
+// ------------------------------------------------------------------
+
+export function checkExamCode(input: unknown, expected: string | undefined): ChatResult {
+  const code = (input as { code?: unknown } | null)?.code;
+  if (typeof code !== 'string' || code.length > 50) {
+    return { status: 400, body: { error: 'Codewort fehlt.' } };
+  }
+  const ok = normalize(code) === normalize(expected || 'luxor');
+  return { status: 200, body: { ok } };
+}
+
+// ------------------------------------------------------------------
+// Status für die Lehrperson: Ist der Schlüssel gesetzt, sind die Modelle erreichbar?
+// Kostet keine Antwort-Tokens (es werden nur Modell-Infos abgefragt).
+// ------------------------------------------------------------------
+
+export async function getStatus(apiKey: string | undefined): Promise<Record<string, string>> {
+  const status: Record<string, string> = { schluessel: apiKey ? 'gesetzt' : 'FEHLT' };
+  if (!apiKey) return status;
+  const ai = new GoogleGenAI({ apiKey });
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      await ai.models.get({ model });
+      status[model] = 'erreichbar';
+    } catch (err: any) {
+      status[model] = `Fehler: ${String(err?.message || err).slice(0, 160)}`;
+    }
+  }
+  return status;
 }

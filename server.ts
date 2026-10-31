@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleChat } from './lib/pharao.js';
+import { handleChat, checkExamCode, getStatus } from './lib/pharao.js';
 
 dotenv.config();
 
@@ -25,6 +25,15 @@ app.post('/api/chat', async (req, res) => {
       error: 'Pharao Tutanchamuns Grabkammer ist im Moment in tiefen Schlaf versunken. Bitte versuche es gleich noch einmal.',
     });
   }
+});
+
+app.post('/api/unlock', (req, res) => {
+  const result = checkExamCode(req.body, process.env.EXAM_CODE);
+  res.status(result.status).json(result.body);
+});
+
+app.get('/api/status', async (_req, res) => {
+  res.json(await getStatus(process.env.GEMINI_API_KEY));
 });
 
 // Vite middleware in dev or static server in prod

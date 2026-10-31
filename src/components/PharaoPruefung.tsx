@@ -7,15 +7,17 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  RotateCcw,
   Printer,
   ArrowRight,
   Scroll,
   HelpCircle,
   Flame,
   Check,
+  Lightbulb,
+  Gamepad2,
 } from 'lucide-react';
 import { playSuccessChime, playMysticChime, playTombGong } from '../utils/soundEffects';
+import { MumienSpiel } from './MumienSpiel';
 
 interface PharaoPruefungProps {
   onBackToChat: () => void;
@@ -34,6 +36,7 @@ const QUIZ_QUESTIONS = [
       'Er lag frei auf einem goldenen Bett',
     ],
     correctIdx: 1,
+    hint: 'Denk an eine russische Puppe: Mehrere Särge steckten ineinander – und der innerste war besonders kostbar.',
     explanation: 'Genau! Der äusserste Sarg war aus Stein, zwei aus bemaltem Holz und der innerste aus purem Gold – umgeben von vier vergoldeten Holzschreinen.',
   },
   {
@@ -46,6 +49,7 @@ const QUIZ_QUESTIONS = [
       'Drei goldene Schlangenstäbe',
     ],
     correctIdx: 1,
+    hint: 'Ein Pharao war wie ein Hirte für sein Volk. Und eines der Zeichen steht für das ewige Leben.',
     explanation: 'Richtig! Der Krummstab (Symbol des Hirten), der Dreschflegel und das Anch (Symbol für ewiges Leben) waren seine Insignien.',
   },
   {
@@ -58,6 +62,7 @@ const QUIZ_QUESTIONS = [
       'Alexander der Grosse',
     ],
     correctIdx: 1,
+    hint: 'Es waren zwei Männer aus England: ein Archäologe und sein reicher Geldgeber.',
     explanation: 'Ausgezeichnet! Carter und sein Geldgeber Lord Carnarvon gaben nicht auf und fanden das einzige unversehrte Königsgrab.',
   },
   {
@@ -70,6 +75,7 @@ const QUIZ_QUESTIONS = [
       'Eine Warnung vor Schlangen im Sand',
     ],
     correctIdx: 1,
+    hint: 'Überlege: Sind die Forscher wirklich alle früh gestorben? Und wer schreibt gerne aufregende Geschichten?',
     explanation: 'Ganz genau! Tutanchamun ist keineswegs wütend, sondern freut sich über den ewigen Ruhm. Die Zeitungen erfanden den Fluch als Sensation.',
   },
 ];
@@ -78,17 +84,34 @@ const QUIZ_QUESTIONS = [
 interface ClozeItem {
   id: number;
   word: string;
+  hint: string;
 }
 
 const CLOZE_ITEMS: ClozeItem[] = [
-  { id: 1, word: 'Wüstensand' },
-  { id: 2, word: 'Nase' },
-  { id: 3, word: 'Kanopen' },
-  { id: 4, word: 'Myrrhe' },
-  { id: 5, word: 'Natronlauge' },
-  { id: 6, word: 'Leinenstreifen' },
-  { id: 7, word: 'Mundöffnung' },
+  { id: 1, word: 'Wüstensand', hint: 'Wo wurden arme Menschen begraben? Es ist dort sehr heiss und trocken.' },
+  { id: 2, word: 'Nase', hint: 'Durch welche Öffnung im Kopf kommt man ans Gehirn, ohne den Kopf aufzuschneiden?' },
+  { id: 3, word: 'Kanopen', hint: 'So heissen die besonderen Krüge für die Organe.' },
+  { id: 4, word: 'Myrrhe', hint: 'Etwas, das gut duftet und in den Bauch kam.' },
+  { id: 5, word: 'Natronlauge', hint: 'Die salzige Flüssigkeit, die das Wasser aus dem Körper zieht.' },
+  { id: 6, word: 'Leinenstreifen', hint: 'Damit wurde die Mumie eingewickelt.' },
+  { id: 7, word: 'Mundöffnung', hint: 'Das Ritual, damit der Pharao im Jenseits sprechen und essen kann.' },
 ];
+
+function shuffled<T>(items: T[]): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Punkte je nach Anzahl Versuche: 1. Versuch 10, 2. Versuch 5, danach 2. */
+function pointsForTries(tries: number): number {
+  if (tries <= 1) return 10;
+  if (tries === 2) return 5;
+  return 2;
+}
 
 // Generate a personalized royal Egyptian Pharaoh Name based on student's name
 function generatePharaohName(rawName: string): { pharaohName: string; title: string } {
@@ -149,58 +172,90 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
   onBackToChat,
   soundEnabled,
 }) => {
-  // State 1: Password Lock
+  // State 1: Password Lock (Codewort wird auf dem Server geprüft)
   const [passwordInput, setPasswordInput] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   // State 2: Student identity
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('5a');
   const [hasStarted, setHasStarted] = useState(false);
 
-  // State 3: Quiz Answers (Question ID -> selected option index)
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
-  const [quizChecked, setQuizChecked] = useState(false);
+  // State 3: Quiz – Antworten werden sofort geprüft.
+  // Reihenfolge der Antworten pro Frage durchmischt (sonst wäre immer die 2. richtig)
+  const [optionOrder] = useState<Record<number, number[]>>(() =>
+    Object.fromEntries(QUIZ_QUESTIONS.map((q) => [q.id, shuffled(q.options.map((_, i) => i))])),
+  );
+  const [quizSolved, setQuizSolved] = useState<Record<number, boolean>>({});
+  const [quizWrongPicks, setQuizWrongPicks] = useState<Record<number, number[]>>({});
 
-  // State 4: Lückentext (Blank ID -> assigned word)
+  // State 4: Lückentext
   const [clozeAnswers, setClozeAnswers] = useState<Record<number, string>>({});
   const [shuffledWordBank, setShuffledWordBank] = useState<string[]>([]);
   const [selectedWordToPlace, setSelectedWordToPlace] = useState<string | null>(null);
-  const [clozeChecked, setClozeChecked] = useState(false);
+  const [clozeRounds, setClozeRounds] = useState(0); // wie oft «Prüfen» gedrückt wurde
+  const [clozeWrongCount, setClozeWrongCount] = useState<Record<number, number>>({});
+  const [clozeLastWrong, setClozeLastWrong] = useState<number[]>([]); // Lücken, die gerade falsch waren
+  const [clozeSolved, setClozeSolved] = useState(false);
 
-  // State 5: Completion & Certificate
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  // State 5: Spiel nach der Urkunde
+  const [showGame, setShowGame] = useState(false);
+  const [certificateDate] = useState(() =>
+    new Date().toLocaleDateString('de-CH', { day: '2-digit', month: 'long', year: 'numeric' }),
+  );
 
   // Initialize shuffled word bank on mount
   useEffect(() => {
-    const words = CLOZE_ITEMS.map((item) => item.word);
-    setShuffledWordBank([...words].sort(() => Math.random() - 0.5));
+    setShuffledWordBank(shuffled(CLOZE_ITEMS.map((item) => item.word)));
   }, []);
 
-  // Unlock check
-  const handleUnlock = (e: React.FormEvent) => {
+  // Unlock check (auf dem Server, damit das Codewort nicht im Browser-Code steht)
+  const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput.trim().toLowerCase() === 'luxor') {
-      setIsUnlocked(true);
-      setPasswordError(false);
+    if (!passwordInput.trim() || isChecking) return;
+    setIsChecking(true);
+    try {
+      const res = await fetch('/api/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: passwordInput }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok === true) {
+        setIsUnlocked(true);
+        setPasswordError(null);
+        playSuccessChime(soundEnabled);
+      } else {
+        setPasswordError('Dieses Wort öffnet das Tor nicht. Frage deine Lehrperson!');
+        playTombGong(soundEnabled);
+      }
+    } catch {
+      setPasswordError('Das Tor klemmt gerade. Prüfe die Internetverbindung und versuche es nochmals.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  // Quiz: Antwort antippen -> sofort prüfen
+  const handleSelectQuiz = (qId: number, optIdx: number) => {
+    const q = QUIZ_QUESTIONS.find((x) => x.id === qId);
+    if (!q || quizSolved[qId] || (quizWrongPicks[qId] || []).includes(optIdx)) return;
+    if (optIdx === q.correctIdx) {
+      setQuizSolved((prev) => ({ ...prev, [qId]: true }));
       playSuccessChime(soundEnabled);
     } else {
-      setPasswordError(true);
+      setQuizWrongPicks((prev) => ({ ...prev, [qId]: [...(prev[qId] || []), optIdx] }));
       playTombGong(soundEnabled);
     }
   };
 
-  // Select quiz option
-  const handleSelectQuiz = (qId: number, optIdx: number) => {
-    if (quizChecked) return;
-    setQuizAnswers((prev) => ({ ...prev, [qId]: optIdx }));
-    playMysticChime(soundEnabled);
-  };
+  const quizTries = (qId: number) => (quizWrongPicks[qId]?.length || 0) + 1;
 
   // Place or remove word in cloze
   const handleBlankClick = (blankId: number) => {
-    if (clozeChecked) return;
+    if (clozeSolved) return;
 
     // If there is already a word in this blank, remove it back to word bank
     if (clozeAnswers[blankId]) {
@@ -220,76 +275,87 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       setClozeAnswers((prev) => ({ ...prev, [blankId]: selectedWordToPlace }));
       setShuffledWordBank((prev) => prev.filter((w) => w !== selectedWordToPlace));
       setSelectedWordToPlace(null);
+      setClozeLastWrong((prev) => prev.filter((id) => id !== blankId));
       playMysticChime(soundEnabled);
     }
   };
 
   const handleWordBankClick = (word: string) => {
-    if (clozeChecked) return;
+    if (clozeSolved) return;
 
     if (selectedWordToPlace === word) {
       setSelectedWordToPlace(null);
       return;
     }
 
-    // Find first empty blank if none is actively waiting, or select the word
-    const firstEmpty = CLOZE_ITEMS.find((item) => !clozeAnswers[item.id]);
+    // Nach einer Prüfrunde zuerst die falschen Lücken füllen, sonst die erste leere
+    const firstEmpty =
+      CLOZE_ITEMS.find((item) => !clozeAnswers[item.id] && clozeLastWrong.includes(item.id)) ||
+      CLOZE_ITEMS.find((item) => !clozeAnswers[item.id]);
     if (firstEmpty) {
       setClozeAnswers((prev) => ({ ...prev, [firstEmpty.id]: word }));
       setShuffledWordBank((prev) => prev.filter((w) => w !== word));
       setSelectedWordToPlace(null);
+      setClozeLastWrong((prev) => prev.filter((id) => id !== firstEmpty.id));
       playMysticChime(soundEnabled);
     } else {
       setSelectedWordToPlace(word);
     }
   };
 
-  // Calculate scores
-  const getQuizScore = () => {
-    let score = 0;
-    QUIZ_QUESTIONS.forEach((q) => {
-      if (quizAnswers[q.id] === q.correctIdx) {
-        score += 10;
-      }
+  // Lückentext prüfen: falsche Wörter gehen zurück in die Wortbank
+  const handleCheckCloze = () => {
+    const wrong = CLOZE_ITEMS.filter((item) => clozeAnswers[item.id] !== item.word).map((i) => i.id);
+    setClozeRounds((r) => r + 1);
+    if (wrong.length === 0) {
+      setClozeSolved(true);
+      setClozeLastWrong([]);
+      playSuccessChime(soundEnabled);
+      return;
+    }
+    setClozeWrongCount((prev) => {
+      const next = { ...prev };
+      wrong.forEach((id) => (next[id] = (next[id] || 0) + 1));
+      return next;
     });
-    return score;
+    const returned = wrong.map((id) => clozeAnswers[id]).filter(Boolean);
+    setClozeAnswers((prev) => {
+      const next = { ...prev };
+      wrong.forEach((id) => delete next[id]);
+      return next;
+    });
+    setShuffledWordBank((prev) => shuffled([...prev, ...returned]));
+    setClozeLastWrong(wrong);
+    playTombGong(soundEnabled);
   };
 
-  const getClozeScore = () => {
-    let score = 0;
-    CLOZE_ITEMS.forEach((item) => {
-      if (clozeAnswers[item.id] === item.word) {
-        score += 10;
-      }
-    });
-    return score;
-  };
+  // Punkte: weniger Punkte, wenn mehr Anläufe nötig waren
+  const getQuizScore = () =>
+    QUIZ_QUESTIONS.reduce((sum, q) => sum + (quizSolved[q.id] ? pointsForTries(quizTries(q.id)) : 0), 0);
 
+  const getClozeScore = () =>
+    clozeSolved
+      ? CLOZE_ITEMS.reduce((sum, item) => sum + pointsForTries((clozeWrongCount[item.id] || 0) + 1), 0)
+      : 0;
+
+  const quizDone = QUIZ_QUESTIONS.every((q) => quizSolved[q.id]);
+  const allDone = quizDone && clozeSolved;
   const totalScore = getQuizScore() + getClozeScore();
   const maxScore = QUIZ_QUESTIONS.length * 10 + CLOZE_ITEMS.length * 10; // 40 + 70 = 110
+  const allBlanksFilled = CLOZE_ITEMS.every((item) => clozeAnswers[item.id]);
 
-  const handleFinalSubmit = () => {
-    setQuizChecked(true);
-    setClozeChecked(true);
-    setIsSubmitted(true);
-    playSuccessChime(soundEnabled);
-  };
-
-  const handleRestart = () => {
-    setQuizAnswers({});
-    setQuizChecked(false);
-    setClozeAnswers({});
-    const words = CLOZE_ITEMS.map((item) => item.word);
-    setShuffledWordBank([...words].sort(() => Math.random() - 0.5));
-    setClozeChecked(false);
-    setIsSubmitted(false);
-    playMysticChime(soundEnabled);
-  };
+  // Zusammenfassung der Anläufe für die Urkunde
+  const quizRetries = QUIZ_QUESTIONS.map((q, i) => ({ nr: i + 1, tries: quizTries(q.id) })).filter((x) => x.tries > 1);
+  const clozeRetries = CLOZE_ITEMS.filter((item) => (clozeWrongCount[item.id] || 0) > 0).map((item) => ({
+    nr: item.id,
+    tries: (clozeWrongCount[item.id] || 0) + 1,
+  }));
+  const allFirstTry = quizRetries.length === 0 && clozeRetries.length === 0;
 
   const royalPersona = generatePharaohName(studentName);
 
   // ----------------------------------------------------
-  // SCREEN 1: LOCKED GATE (Password: "luxor")
+  // SCREEN 1: LOCKED GATE (Codewort wird auf dem Server geprüft)
   // ----------------------------------------------------
   if (!isUnlocked) {
     return (
@@ -324,9 +390,9 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
                 value={passwordInput}
                 onChange={(e) => {
                   setPasswordInput(e.target.value);
-                  setPasswordError(false);
+                  setPasswordError(null);
                 }}
-                placeholder="Passwort eingeben (Tipp: antike Stadt)..."
+                placeholder="Codewort eingeben..."
                 className="w-full bg-[#162138] border-2 border-amber-500/50 focus:border-amber-400 rounded-2xl px-4 py-3.5 text-center text-lg font-bold tracking-widest text-amber-100 placeholder:text-amber-200/30 placeholder:tracking-normal placeholder:font-normal focus:outline-none shadow-inner"
               />
               <KeyRound className="w-5 h-5 text-amber-400/60 absolute right-4 top-1/2 -translate-y-1/2" />
@@ -335,16 +401,17 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             {passwordError && (
               <p className="text-xs text-rose-400 font-semibold animate-pulse flex items-center justify-center gap-1.5">
                 <XCircle className="w-4 h-4" />
-                <span>Dieses Wort öffnet das Tor nicht. Frage deine Lehrperson!</span>
+                <span>{passwordError}</span>
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 font-extrabold text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center gap-2"
+              disabled={isChecking}
+              className="w-full py-3.5 disabled:opacity-60 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 font-extrabold text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center gap-2"
             >
               <Unlock className="w-4 h-4" />
-              <span>Prüfungstor öffnen</span>
+              <span>{isChecking ? 'Das Tor wird geprüft...' : 'Prüfungstor öffnen'}</span>
             </button>
           </form>
 
@@ -441,7 +508,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
               Die grosse Pharaonen-Prüfung
             </h2>
             <p className="text-xs text-amber-300/80">
-              Forscher/in: <strong>{studentName}</strong> (Klasse {studentClass}) • Code «luxor» bestätigt
+              Forscher/in: <strong>{studentName}</strong> (Klasse {studentClass})
             </p>
           </div>
         </div>
@@ -450,7 +517,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
           <div className="px-4 py-2 rounded-xl bg-[#0b101d] border border-amber-500/40 text-center">
             <span className="block text-[10px] uppercase font-bold text-amber-400">Punkte</span>
             <span className="text-lg font-black text-amber-200 font-pharaoh">
-              {isSubmitted ? `${totalScore} / ${maxScore}` : 'Wird gezählt...'}
+              {totalScore} / {maxScore}
             </span>
           </div>
 
@@ -464,7 +531,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       </div>
 
       {/* TEIL 1: DAS GEZIELTE QUIZ */}
-      <div className="rounded-3xl border-2 border-amber-500/30 bg-[#0e1628] p-6 sm:p-8 space-y-6 shadow-xl">
+      <div hidden={showGame} className="rounded-3xl border-2 border-amber-500/30 bg-[#0e1628] p-6 sm:p-8 space-y-6 shadow-xl">
         <div className="border-b border-amber-500/30 pb-3 flex items-center justify-between">
           <div>
             <span className="text-xs uppercase font-extrabold tracking-wider text-amber-400">
@@ -477,14 +544,22 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
           <span className="text-xs text-slate-400">4 Fragen</span>
         </div>
 
+        <p className="text-xs text-amber-200/80 -mt-2">
+          Tippe eine Antwort an. Ist sie falsch, bekommst du einen Tipp und darfst es nochmals versuchen.
+          Beim ersten Versuch gibt es 10 Punkte, beim zweiten 5, danach 2.
+        </p>
+
         <div className="space-y-6">
           {QUIZ_QUESTIONS.map((q, qIndex) => {
-            const selectedOpt = quizAnswers[q.id];
+            const solved = !!quizSolved[q.id];
+            const wrongPicks = quizWrongPicks[q.id] || [];
 
             return (
               <div
                 key={q.id}
-                className="p-4 sm:p-5 rounded-2xl bg-[#141e33] border border-amber-500/25 space-y-3"
+                className={`p-4 sm:p-5 rounded-2xl bg-[#141e33] border space-y-3 ${
+                  solved ? 'border-emerald-500/50' : 'border-amber-500/25'
+                }`}
               >
                 <h4 className="font-bold text-amber-100 text-sm sm:text-base flex items-start gap-2">
                   <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs flex items-center justify-center shrink-0 mt-0.5 font-pharaoh">
@@ -494,45 +569,50 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {q.options.map((opt, optIdx) => {
+                  {optionOrder[q.id].map((optIdx) => {
+                    const opt = q.options[optIdx];
+                    const isWrongPick = wrongPicks.includes(optIdx);
+                    const isCorrect = optIdx === q.correctIdx;
                     let btnStyle = 'bg-[#1b2742] hover:bg-[#223254] text-slate-200 border-slate-700';
 
-                    if (selectedOpt === optIdx) {
-                      btnStyle = 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold';
-                    }
-
-                    if (quizChecked) {
-                      if (optIdx === q.correctIdx) {
-                        btnStyle = 'bg-emerald-950 border-emerald-400 text-emerald-200 font-bold';
-                      } else if (selectedOpt === optIdx && optIdx !== q.correctIdx) {
-                        btnStyle = 'bg-rose-950 border-rose-500 text-rose-200';
-                      } else {
-                        btnStyle = 'bg-slate-900/50 border-slate-800 text-slate-500 opacity-60';
-                      }
+                    if (solved && isCorrect) {
+                      btnStyle = 'bg-emerald-950 border-emerald-400 text-emerald-200 font-bold';
+                    } else if (isWrongPick) {
+                      btnStyle = 'bg-rose-950/70 border-rose-500/70 text-rose-200/80 line-through';
+                    } else if (solved) {
+                      btnStyle = 'bg-slate-900/50 border-slate-800 text-slate-500 opacity-60';
                     }
 
                     return (
                       <button
                         key={optIdx}
-                        disabled={quizChecked}
+                        disabled={solved || isWrongPick}
                         onClick={() => handleSelectQuiz(q.id, optIdx)}
                         className={`text-left p-3 rounded-xl border text-xs sm:text-sm transition-all flex items-center justify-between ${btnStyle}`}
                       >
                         <span>{opt}</span>
-                        {quizChecked && optIdx === q.correctIdx && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-1.5" />
-                        )}
-                        {quizChecked && selectedOpt === optIdx && optIdx !== q.correctIdx && (
-                          <XCircle className="w-4 h-4 text-rose-400 shrink-0 ml-1.5" />
-                        )}
+                        {solved && isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-1.5" />}
+                        {isWrongPick && <XCircle className="w-4 h-4 text-rose-400 shrink-0 ml-1.5" />}
                       </button>
                     );
                   })}
                 </div>
 
-                {quizChecked && (
+                {!solved && wrongPicks.length > 0 && (
+                  <div className="text-xs text-amber-100 p-3 rounded-xl bg-amber-500/10 border border-amber-400/40 flex items-start gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Tipp des Pharao: </strong>
+                      {q.hint}
+                      {wrongPicks.length >= 2 && ' Du kannst auch im Lexikon nachschauen oder die Mumie fragen.'}
+                    </span>
+                  </div>
+                )}
+
+                {solved && (
                   <p className="text-xs text-amber-300/90 pt-1 border-t border-amber-500/20">
-                    <strong>Erklärung: </strong> {q.explanation}
+                    <strong>{quizTries(q.id) === 1 ? 'Beim ersten Versuch! ' : `Geschafft im ${quizTries(q.id)}. Versuch. `}</strong>
+                    {q.explanation}
                   </p>
                 )}
               </div>
@@ -542,7 +622,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       </div>
 
       {/* TEIL 2: LÜCKENTEXT MIT DURCHMISCHTEN TEXTBAUSTEINEN */}
-      <div className="rounded-3xl border-2 border-amber-500/30 bg-[#0e1628] p-6 sm:p-8 space-y-6 shadow-xl">
+      <div hidden={showGame} className="rounded-3xl border-2 border-amber-500/30 bg-[#0e1628] p-6 sm:p-8 space-y-6 shadow-xl">
         <div className="border-b border-amber-500/30 pb-3 flex items-center justify-between">
           <div>
             <span className="text-xs uppercase font-extrabold tracking-wider text-amber-400">
@@ -572,7 +652,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
               shuffledWordBank.map((word, idx) => (
                 <button
                   key={idx}
-                  disabled={clozeChecked}
+                  disabled={clozeSolved}
                   onClick={() => handleWordBankClick(word)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all active:scale-95 shadow-sm ${
                     selectedWordToPlace === word
@@ -613,37 +693,59 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
           </p>
         </div>
 
-        {/* Submit or Result Action */}
-        {!isSubmitted ? (
-          <div className="pt-2 flex justify-end">
+        {/* Lückentext prüfen & Hinweise zu falschen Lücken */}
+        {!clozeSolved && clozeLastWrong.length > 0 && (
+          <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/50 space-y-2 text-xs text-rose-100">
+            <p className="font-bold flex items-center gap-1.5">
+              <XCircle className="w-4 h-4 text-rose-400" />
+              {clozeLastWrong.length === 1
+                ? '1 Lücke war noch falsch. Das Wort liegt wieder oben bei den Textbausteinen.'
+                : `${clozeLastWrong.length} Lücken waren noch falsch. Die Wörter liegen wieder oben bei den Textbausteinen.`}
+            </p>
+            <ul className="space-y-1">
+              {CLOZE_ITEMS.filter((item) => clozeLastWrong.includes(item.id)).map((item) => (
+                <li key={item.id} className="flex items-start gap-1.5 text-amber-100">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Lücke {item.id}:</strong> {item.hint}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {clozeSolved ? (
+          <p className="p-3 rounded-2xl bg-emerald-950/50 border border-emerald-500/50 text-sm font-bold text-emerald-200 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            {clozeRounds === 1 ? 'Lückentext beim ersten Versuch komplett richtig!' : `Lückentext komplett richtig (nach ${clozeRounds} Prüfrunden).`}
+          </p>
+        ) : (
+          <div className="pt-2 flex flex-wrap items-center justify-end gap-3">
+            {!allBlanksFilled && (
+              <span className="text-xs text-amber-300/70">Fülle zuerst alle Lücken aus.</span>
+            )}
             <button
-              onClick={handleFinalSubmit}
-              className="px-8 py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 font-extrabold text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center gap-2"
+              onClick={handleCheckCloze}
+              disabled={!allBlanksFilled}
+              className="px-8 py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40 disabled:pointer-events-none text-amber-950 font-extrabold text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center gap-2"
             >
-              <Award className="w-5 h-5" />
-              <span>Prüfung abgeben & Urkunde enthüllen</span>
+              <Check className="w-5 h-5" />
+              <span>Lückentext prüfen</span>
             </button>
           </div>
-        ) : (
-          <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold text-amber-200">
-                Erreichte Gesamtpunktzahl: <span className="text-xl text-amber-300 font-pharaoh">{totalScore}</span> von {maxScore} Punkten
-              </p>
-              <p className="text-xs text-amber-300/80">
-                Quiz: {getQuizScore()}/40 Punkte • Lückentext: {getClozeScore()}/70 Punkte
-              </p>
-            </div>
+        )}
 
-            <div className="flex gap-2">
-              <button
-                onClick={handleRestart}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-600 flex items-center gap-1.5 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Nochmal versuchen</span>
-              </button>
-            </div>
+        {/* Was fehlt noch bis zur Urkunde? */}
+        {!allDone && (
+          <div className="p-4 rounded-2xl bg-[#121b2d] border border-amber-500/30 text-xs text-amber-200/90 flex items-start gap-2">
+            <Award className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              Deine Urkunde erscheint, sobald alles richtig gelöst ist.{' '}
+              {!quizDone &&
+                `Quiz: ${QUIZ_QUESTIONS.filter((q) => quizSolved[q.id]).length} von ${QUIZ_QUESTIONS.length} Fragen gelöst. `}
+              {!clozeSolved && 'Lückentext: noch nicht fertig.'}
+            </span>
           </div>
         )}
       </div>
@@ -651,7 +753,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
       {/* ---------------------------------------------------- */}
       {/* SCREEN 4: DIE KÖNIGLICHE URKUNDE MIT PHARAONEN-NAMEN */}
       {/* ---------------------------------------------------- */}
-      {isSubmitted && (
+      {allDone && !showGame && (
         <div className="space-y-4 animate-fade-in pt-4">
           <div className="text-center space-y-1">
             <span className="text-xs uppercase font-extrabold tracking-widest text-amber-400">
@@ -731,7 +833,37 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             {/* Score & Evaluation */}
             <div className="inline-block px-5 py-2 rounded-xl bg-[#fef3c7] border border-[#b45309] text-xs font-bold text-[#78350f]">
               Erreichte Punktzahl: {totalScore} von {maxScore} Punkten ({Math.round((totalScore / maxScore) * 100)}%)
-              {totalScore >= 90 ? ' — Höchste königliche Auszeichnung!' : ' — Ausgezeichneter Forschergeist!'}
+              {allFirstTry
+                ? ' — Höchste königliche Auszeichnung!'
+                : totalScore >= 80
+                ? ' — Ausgezeichneter Forschergeist!'
+                : ' — Mit Ausdauer zum Ziel!'}
+            </div>
+
+            {/* Anläufe: für die Lehrperson sichtbar */}
+            <div className="max-w-md mx-auto text-left text-[11px] sm:text-xs text-[#78350f] rounded-xl border border-[#b45309]/40 bg-[#fffbeb] px-4 py-3 space-y-1">
+              <span className="block font-bold uppercase tracking-wider text-[10px] text-[#92400e]">
+                Prüfungsverlauf
+              </span>
+              {allFirstTry ? (
+                <span className="block">Alle Aufgaben beim ersten Versuch richtig gelöst.</span>
+              ) : (
+                <>
+                  <span className="block">
+                    <strong>Quiz:</strong>{' '}
+                    {quizRetries.length === 0
+                      ? 'alle Fragen beim ersten Versuch richtig.'
+                      : quizRetries.map((r) => `Frage ${r.nr}: ${r.tries} Anläufe`).join(' • ')}
+                  </span>
+                  <span className="block">
+                    <strong>Lückentext:</strong>{' '}
+                    {clozeRetries.length === 0
+                      ? 'alle Lücken beim ersten Versuch richtig.'
+                      : `${clozeRounds} Prüfrunden • korrigiert: ` +
+                        clozeRetries.map((r) => `Lücke ${r.nr} (${r.tries} Anläufe)`).join(', ')}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Signatures */}
@@ -743,7 +875,7 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
 
               <div className="space-y-1 text-center">
                 <span className="font-bold text-sm block">Lehrperson & Primarschule Erlenmatt</span>
-                <span className="text-[10px] text-[#854d0e] block">Prüfungscode «luxor» verifiziert</span>
+                <span className="text-[10px] text-[#854d0e] block">Ausgestellt am {certificateDate}</span>
               </div>
             </div>
           </div>
@@ -759,6 +891,17 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
             </button>
 
             <button
+              onClick={() => {
+                setShowGame(true);
+                playMysticChime(soundEnabled);
+              }}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-sm flex items-center gap-2 shadow-xl transition-all"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              <span>Belohnung: Mumien-Spiel starten</span>
+            </button>
+
+            <button
               onClick={onBackToChat}
               className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold text-sm flex items-center gap-2 transition-all border border-slate-700"
             >
@@ -768,43 +911,51 @@ export const PharaoPruefung: React.FC<PharaoPruefungProps> = ({
         </div>
       )}
 
+      {/* BELOHNUNGS-SPIEL */}
+      {allDone && showGame && (
+        <MumienSpiel
+          playerName={studentName}
+          soundEnabled={soundEnabled}
+          onClose={() => setShowGame(false)}
+        />
+      )}
+
     </div>
   );
 
   // Helper renderer for cloze blanks
-  function renderClozeBlank(blankId: number, expectedWord: string) {
+  function renderClozeBlank(blankId: number, _expectedWord: string) {
     const placedWord = clozeAnswers[blankId];
-    const isCorrect = placedWord === expectedWord;
+    const wasWrong = clozeLastWrong.includes(blankId);
 
     let blankClass =
       'inline-flex items-center justify-center min-w-[120px] px-3 py-1 mx-1.5 rounded-lg border-2 border-dashed font-bold text-xs sm:text-sm cursor-pointer transition-all select-none ';
 
-    if (!placedWord) {
+    if (clozeSolved) {
+      blankClass += 'border-emerald-400 bg-emerald-950 text-emerald-200 cursor-default';
+    } else if (!placedWord && wasWrong) {
+      blankClass += 'border-rose-500 bg-rose-950/50 text-rose-200 animate-pulse';
+    } else if (!placedWord) {
       blankClass += 'border-amber-400/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20';
-    } else if (!clozeChecked) {
-      blankClass += 'border-amber-400 bg-amber-500/25 text-amber-200 hover:bg-rose-950/40 hover:border-rose-400';
     } else {
-      if (isCorrect) {
-        blankClass += 'border-emerald-400 bg-emerald-950 text-emerald-200';
-      } else {
-        blankClass += 'border-rose-500 bg-rose-950 text-rose-200';
-      }
+      blankClass += 'border-amber-400 bg-amber-500/25 text-amber-200 hover:bg-rose-950/40 hover:border-rose-400';
     }
 
     return (
       <span
         onClick={() => handleBlankClick(blankId)}
         className={blankClass}
-        title={placedWord && !clozeChecked ? 'Klicken, um Wort zurückzulegen' : 'Klicken zum Einsetzen'}
+        title={placedWord && !clozeSolved ? 'Klicken, um Wort zurückzulegen' : 'Klicken zum Einsetzen'}
       >
         {placedWord ? (
           <span className="flex items-center gap-1">
             <span>{placedWord}</span>
-            {clozeChecked && isCorrect && <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />}
-            {clozeChecked && !isCorrect && <XCircle className="w-3.5 h-3.5 text-rose-400 ml-1" />}
+            {clozeSolved && <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />}
           </span>
         ) : (
-          <span className="opacity-60 text-[11px] font-normal">[ Lücke {blankId} ]</span>
+          <span className="opacity-70 text-[11px] font-normal">
+            {wasWrong ? `[ Lücke ${blankId}: nochmals ]` : `[ Lücke ${blankId} ]`}
+          </span>
         )}
       </span>
     );

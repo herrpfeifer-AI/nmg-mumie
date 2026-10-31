@@ -278,7 +278,7 @@ export default function App() {
               <span>Audienz</span>
             </button>
 
-            {/* Tab: Pharaonen-Prüfung & Urkunde (Code "luxor") */}
+            {/* Tab: Pharaonen-Prüfung & Urkunde */}
             <button
               onClick={() => {
                 setCurrentTab('pruefung');
@@ -342,7 +342,7 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 2: PHARAONEN-PRÜFUNG & URKUNDE (Password: luxor) */}
+        {/* VIEW 2: PHARAONEN-PRÜFUNG & URKUNDE */}
         {currentTab === 'pruefung' && (
           <PharaoPruefung
             onBackToChat={() => setCurrentTab('chat')}
@@ -381,7 +381,7 @@ export default function App() {
                   className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-400/40 flex items-center gap-1.5 font-bold"
                 >
                   <Lock className="w-3 h-3" />
-                  <span>Prüfung (Code: luxor)</span>
+                  <span>Prüfung</span>
                 </button>
               </div>
             </div>
@@ -547,7 +547,7 @@ export default function App() {
               <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-amber-300/60">
                 <span className="flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5" />
-                  Tipp: Wenn du dein OneNote ausgefüllt hast, hole dir den Code «luxor» bei der Lehrperson für die Prüfung & Urkunde!
+                  Tipp: Wenn du dein OneNote ausgefüllt hast, hole dir das Codewort bei der Lehrperson für die Prüfung & Urkunde!
                 </span>
                 <span className="hidden sm:inline">Konsequentes Schweizer Hochdeutsch (ss)</span>
               </div>
@@ -561,7 +561,7 @@ export default function App() {
       {/* FOOTER */}
       <footer className="border-t border-amber-500/20 bg-[#070b14] py-3 px-4 text-center text-xs text-amber-400/60">
         <p>
-          Interaktives historisches Lernprojekt für die 5. Klasse der <strong>Primarschule Erlenmatt</strong> in Basel • OneNote-Fragebogen, Code «luxor» & persönliche Pharaonen-Urkunde
+          Interaktives historisches Lernprojekt für die 5. Klasse der <strong>Primarschule Erlenmatt</strong> in Basel • OneNote-Fragebogen, Prüfung & persönliche Pharaonen-Urkunde
         </p>
       </footer>
 
